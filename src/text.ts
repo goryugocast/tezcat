@@ -18,6 +18,21 @@ which while who who's whom why why's will with won't would wouldn't you you'd yo
 you've your yours yourself yourselves also however may might must shall upon yet
 `.trim().split(/\s+/));
 
+/** Japanese tokenizer adapter: tests can supply an analyzer without loading a dictionary. */
+export interface JapaneseToken { surface_form: string; basic_form?: string; pos: string }
+let analyzer: ((text: string) => JapaneseToken[]) | null = null;
+export function setJapaneseAnalyzer(next: ((text: string) => JapaneseToken[]) | null): void { analyzer = next; }
+const JP_RUN = /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}ー]+/gu;
+const NON_JP_WORD = /[\p{L}\p{N}]+(?:'[\p{L}]+)*/gu;
+const JP_DROP = new Set(['助詞','助動詞','記号','接続詞','感動詞','連体詞','フィラー']);
+function japaneseWords(text: string): string[] {
+    if (!analyzer) return text.match(NON_JP_WORD) ?? [];
+    return analyzer(text)
+       .filter(t => !JP_DROP.has(t.pos))
+       .map(t => t.basic_form && t.basic_form !== '*' ? t.basic_form : t.surface_form)
+       .filter(Boolean);
+}
+
 /** Strip Markdown syntax that shouldn't become search terms. */
 export function stripMarkdown(text: string): string {
 	return text
@@ -32,15 +47,26 @@ export function stripMarkdown(text: string): string {
 		.replace(/[*_~=]{1,3}/g, ' ');                             // emphasis/highlight marks
 }
 
-/** Split into lowercase word tokens (letters, digits, apostrophes within words). */
+/** Tokenize Japanese with kuromoji and retain the upstream English behavior. */
 export function tokenize(text: string): string[] {
-	return stripMarkdown(text).toLowerCase().match(/[\p{L}\p{N}]+(?:'[\p{L}]+)*/gu) ?? [];
+    const cleaned = stripMarkdown(text).normalize('NFKC').toLowerCase();
+    const words: string[] = [];
+    let previousEnd = 0;
+    for (const match of cleaned.matchAll(JP_RUN)) {
+        const position = match.index ?? 0;
+        words.push(...(cleaned.slice(previousEnd, position).match(NON_JP_WORD) ?? []));
+        words.push(...japaneseWords(match[0]));
+        previousEnd = position + match[0].length;
+    }
+    words.push(...(cleaned.slice(previousEnd).match(NON_JP_WORD) ?? []));
+    return words;
 }
 
 /** MiniSearch `processTerm`: drop stopwords and very short/long terms. */
 export function processTerm(term: string): string | null {
 	const t = term.toLowerCase();
-	if (t.length < 2 || t.length > 40 || STOPWORDS.has(t)) return null;
+	// A one-character Han word (本, 人, 音) can be meaningful.
+	if ((t.length < 2 && !/^[\p{Script=Han}]$/u.test(t)) || t.length > 40 || STOPWORDS.has(t)) return null;
 	return t;
 }
 

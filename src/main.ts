@@ -1,4 +1,4 @@
-import { App, CachedMetadata, Component, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, SecretComponent, Setting, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from 'obsidian';
+import { FileSystemAdapter, App, CachedMetadata, Component, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, SecretComponent, Setting, TAbstractFile, TFile, WorkspaceLeaf, normalizePath, setIcon } from 'obsidian';
 import { EditorView } from '@codemirror/view';
 import { TezcatView, VIEW_TYPE, renderResultText } from './search_view';
 import { EmbeddingError, EmbeddingService, RECOMMENDED_OLLAMA_MODELS, embeddingModels, sameModel, suggestPrefixes } from './embedding_service';
@@ -7,6 +7,7 @@ import { EmbeddingSpaceChanged, IndexRepository, type SourceFile, type VaultSour
 import { SearchService, type SearchResult } from './search';
 import { logger, LogLevel } from './logger';
 import { cursorContext } from './context';
+import { initializeJapaneseTokenizer } from './japanese';
 
 
 /** Wait this long after a file's last change before re-indexing it (Obsidian saves while you type). */
@@ -65,6 +66,16 @@ export default class Tezcat extends Plugin {
     async onload() {
         await this.loadSettings();
         logger.setLevel(this.settings.logLevel);
+
+        // Start the local Japanese analyzer before the keyword index is opened.
+        try {
+            if (!(this.app.vault.adapter instanceof FileSystemAdapter)) throw new Error('Desktop filesystem required');
+            const pluginDir = this.manifest.dir ?? `${this.app.vault.configDir}/plugins/${this.manifest.id}`;
+            await initializeJapaneseTokenizer(this.app, pluginDir);
+        } catch (error) {
+            logger.warn('Plugin', 'Japanese tokenizer unavailable; using basic tokenization', error);
+            new Notice(`Tezcat JA: Japanese dictionary could not load: ${errorMessage(error)}`, 10000);
+        }
 
         this.index = new IndexRepository(this.indexNamespace(), logger);
         this.search = new SearchService(this.index, async (path) => {
@@ -168,12 +179,12 @@ export default class Tezcat extends Plugin {
 
     /** Per-vault, per-device name for the index databases, kept in Obsidian's vault-scoped local storage. */
     private indexNamespace(): string {
-        let id = this.app.loadLocalStorage('tezcat-index-id');
+        let id = this.app.loadLocalStorage('tezcat-ja-index-id');
         if (typeof id !== 'string') {
             id = crypto.randomUUID();
-            this.app.saveLocalStorage('tezcat-index-id', id);
+            this.app.saveLocalStorage('tezcat-ja-index-id', id);
         }
-        return `tezcat-${id}`;
+        return `tezcat-ja-${id}`;
     }
 
     private async startIndex() {

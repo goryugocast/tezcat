@@ -62,7 +62,7 @@ export interface IndexStats {
 }
 
 /** Bump when the stored format changes; older data is discarded and rebuilt. */
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 /** Vectors are kept for this many embedding models: the current one and the one before. */
 const KEEP_MODELS = 2;

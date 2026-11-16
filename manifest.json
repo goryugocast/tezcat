@@ -1,11 +1,11 @@
 {
-	"id": "tezcat",
-	"name": "Tezcat",
-	"version": "2.0.0",
-	"minAppVersion": "1.11.4",
-	"description": "Implements a remembrance agent using keyword and semantic search. Surface thoughts related to your current work from around your vault. Look into the mirror.",
-	"author": "Max Margenot",
-	"authorUrl": "https://github.com/mmargenot",
-	"fundingUrl": "https://coff.ee/mmargenot",
-	"isDesktopOnly": true
+  "id": "tezcat-ja",
+  "name": "Tezcat JA (trial)",
+  "version": "2.0.0",
+  "minAppVersion": "1.11.4",
+  "description": "Japanese-aware keyword search with offline kuromoji/IPADIC (experimental fork of Tezcat 2.0).",
+  "author": "Max Margenot",
+  "authorUrl": "https://github.com/mmargenot",
+  "fundingUrl": "https://coff.ee/mmargenot",
+  "isDesktopOnly": true
 }

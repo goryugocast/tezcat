@@ -3,7 +3,7 @@ import type { SearchResult } from './search';
 import { logger } from './logger';
 import type Tezcat from './main';
 
-const VIEW_TYPE = 'remembrance-search';
+const VIEW_TYPE = 'tezcat-ja-remembrance-search';
 
 /** Embeds would pull whole notes or images into the list; show them as plain links instead. */
 const withoutEmbeds = (markdown: string) =>

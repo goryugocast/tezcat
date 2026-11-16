@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
-import { contentTerms, normalizedWords, processTerm, queryTerms, signature, stripMarkdown, tokenize } from '../src/text';
+import { describe, it, expect, afterEach } from 'vitest';
+import { setJapaneseAnalyzer, contentTerms, normalizedWords, processTerm, queryTerms, signature, stripMarkdown, tokenize } from '../src/text';
 
 describe('stripMarkdown', () => {
     it('keeps link text and drops link targets', () => {
@@ -66,5 +66,32 @@ describe('normalizedWords / contentTerms', () => {
 
     it('keeps distinct content words and the number placeholder, without stopwords', () => {
         expect([...contentTerms('The raven, the RAVEN, in 1845 and 1849')].sort()).toEqual(['#', 'raven']);
+    });
+});
+
+
+describe('Japanese keyword pilot', () => {
+    afterEach(() => setJapaneseAnalyzer(null));
+    it('keeps 本人 distinct from 本 and converts 読んだ to 読む', () => {
+        setJapaneseAnalyzer(text => text === '本人が本を読んだ' ? [
+            { surface_form: '本人', basic_form: '本人', pos: '名詞' },
+            { surface_form: 'が', pos: '助詞' },
+            { surface_form: '本', basic_form: '本', pos: '名詞' },
+            { surface_form: 'を', pos: '助詞' },
+            { surface_form: '読ん', basic_form: '読む', pos: '動詞' },
+            { surface_form: 'だ', pos: '助動詞' },
+        ] : []);
+        expect(tokenize('本人が本を読んだ')).toEqual(['本人', '本', '読む']);
+        expect(queryTerms('本人が本を読んだ')).toEqual(['本人', '本', '読む']);
+        expect(processTerm('人')).toBe('人');
+        expect(processTerm('が')).toBeNull();
+    });
+    it('preserves Japanese proper nouns', () => {
+        setJapaneseAnalyzer(() => [{ surface_form: '東京都', basic_form: '東京都', pos: '名詞' }]);
+        expect(queryTerms('東京都')).toEqual(['東京都']);
+    });
+    it('preserves mixed Japanese/English text', () => {
+        setJapaneseAnalyzer(text => [{ surface_form: text, pos: '名詞' }]);
+        expect(queryTerms('ObsidianでAI検索')).toEqual(['obsidian', 'ai', '検索']);
     });
 });

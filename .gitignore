@@ -34,3 +34,8 @@ coverage/
 # Temporary files
 *.tmp
 *.temp
+
+# Generated Japanese dictionary and trial plugin files
+dict/
+dist/
+third-party/
